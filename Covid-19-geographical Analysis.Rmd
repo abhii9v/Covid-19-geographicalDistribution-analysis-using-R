@@ -1,0 +1,257 @@
+---
+title: "Covid-19-Geographical Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(knitr)
+library(dplyr)
+library(mosaic)
+library(plotly)
+library(readxl)
+library(ggplot2)
+library(scales)
+library(janitor)
+library(tidyverse)
+library(lubridate)
+```
+
+
+```{r}
+ 
+# Reading File 
+raw_data<-read_xlsx("COVID-19-geographic-disbtribution-worldwide.xlsx")
+raw_data
+```
+```{r}
+
+
+```
+```{r}
+summary(raw_data)
+```
+```{r}
+raw_data<-na.omit(raw_data)
+raw_data
+```
+```{r}
+raw_data$dateRep<- as.Date(raw_data$dateRep,format= "%m/%d/%y")
+raw_data[order(raw_data$dateRep),]
+```
+
+```{r}
+kable(cbind(sum(~cases, data=raw_data), sum(~deaths, data=raw_data)),
+      col.names = cbind("Total_Cases", "Total_Deaths"))
+
+kable(cbind(sum(cases~ countriesAndTerritories, data=raw_data), sum(deaths~ countriesAndTerritories, data=raw_data)),
+      col.names = cbind("Total_Cases", "Total_Deaths"))
+
+datwise_case_and_death<-kable(cbind(sum(cases~ dateRep, data=raw_data), 
+sum(deaths~ dateRep, data=raw_data)), col.names=cbind("Total_Cases","Total_Deaths"))
+
+datwise_case_and_death
+```
+```{r}
+favstats(~cases, data=raw_data)[c("max", "mean","sd", "n")]
+```
+```{r}
+favstats(cases~ countriesAndTerritories, data=raw_data)[c("countriesAndTerritories", "max", "mean", "sd", "n")]
+```
+```{r}
+favstats(cases~ continentExp, data=raw_data)[c("continentExp","max",
+                                                            "mean","sd", "n")]
+```
+
+```{r}
+favstats(deaths~ countriesAndTerritories, data=raw_data)[c("countriesAndTerritories", "max", "mean","sd", "n")]
+```
+```{r}
+favstats(deaths~ continentExp, data=raw_data)[c("continentExp", "max",
+                                                             "mean","sd", "n")]
+```
+```{r}
+favstats(deaths~ dateRep, data=raw_data)[c("dateRep","max", "mean","sd", "n")]
+```
+
+```{r}
+#renaming columns of data1
+
+data1<-raw_data %>% group_by(continentExp) %>% summarise( sum(cases) )
+data1<- data1%>% rename("Continents"=continentExp,"Number of cases"=`sum(cases)` )
+data1<-data1%>% mutate(percentage= `Number of cases`/sum(`Number of cases`)*100)
+data1
+```
+
+```{r}
+data1$Continents
+data1$percentage<-signif(data1$percentage,digits = 4)
+data1$percentage<-paste(data1$percentage ,"%",sep="")
+```
+
+
+```{r}
+ggplot(data=data1, aes(x=Continents, y=`Number of cases`,fill=Continents)) +
+  geom_text(aes(label=percentage), vjust=-.2, color="black", size=3.5)+
+  geom_bar(stat="identity")+
+  theme_minimal()
+
+```
+```{r}
+data2<-raw_data %>% group_by(continentExp) %>% summarise( sum(deaths) )
+data2<- data2%>% rename("Continents"=continentExp,"Number of deaths"=`sum(deaths)`)
+data2<-data2%>% mutate(percentage= `Number of deaths`/sum(`Number of deaths`)*100)
+data2$percentage<-signif(data2$percentage,digits = 4)
+data2$percentage<-paste(data2$percentage ,"%",sep="")
+data2
+```
+```{r}
+ggplot(data=data2, aes(x=Continents, y=`Number of deaths`,fill=Continents)) +
+  geom_text(aes(label=percentage), vjust=-.2, color="black", size=3.5)+
+  geom_bar(stat="identity")+
+  theme_minimal()
+
+```
+```{r}
+rise_in_cases<-raw_data %>% group_by(continentExp)
+rise_in_cases%>%
+  mutate(Date=dateRep,cases=cases)
+
+rise_in_cases<-rise_in_cases[,c("dateRep","continentExp","cases")]
+
+rise_in_cases<-rise_in_cases%>%group_by(continentExp)
+
+df1<-group_split(rise_in_cases)
+
+df1
+
+```
+```{r}
+
+cases_africa<-df1[[1]]
+cases_africa=subset(cases_africa,select=-c(continentExp))
+cases_africa<- cases_africa%>% rename("Date"=dateRep,"Cases in Africa"=cases)
+cases_africa
+```
+
+
+```{r}
+cases_america<-df1[[2]]
+cases_america=subset(cases_america,select=-c(continentExp))
+cases_america<- cases_america%>% rename("Date"=dateRep,"Cases in America"=cases)
+cases_america
+
+```
+
+```{r}
+cases_asia<-df1[[3]]
+cases_asia=subset(cases_asia,select=-c(continentExp))
+cases_asia<- cases_asia%>% rename("Date"=dateRep,"Cases in Asia"=cases)
+cases_asia
+
+```
+
+
+```{r}
+cases_europe<-df1[[4]]
+cases_europe=subset(cases_europe,select=-c(continentExp))
+cases_europe<- cases_europe%>% rename("Date"=dateRep,"Cases in Europe"=cases)
+cases_europe
+
+```
+```{r}
+cases_oceania<-df1[[5]]
+cases_oceania=subset(cases_oceania,select=-c(continentExp))
+cases_oceania<- cases_oceania%>% rename("Date"=dateRep,"Cases in Oceania"=cases)
+
+cases_oceania
+
+```
+```{r}
+ggplot(cases_africa, aes(x=Date)) + 
+  geom_line(aes(y = `Cases in Africa`), color = "blue") 
+
+ggplot(cases_america, aes(x=Date)) + 
+  geom_line(aes(y = `Cases in America`), color = "red") 
+
+ggplot(cases_asia, aes(x=Date)) + 
+  geom_line(aes(y = `Cases in Asia`), color = "darkred") 
+
+ggplot(cases_europe, aes(x=Date)) + 
+  geom_line(aes(y = `Cases in Europe`), color = "darkblue") 
+
+ggplot(cases_oceania, aes(x=Date)) + 
+  geom_line(aes(y = `Cases in Oceania`), color = "steelblue") 
+```
+```{r}
+raw_data
+```
+```{r}
+##Maps: geom_sf
+```
+
+```{r}
+library(devtools)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rnaturalearthhires)
+```
+
+
+```{r}
+world <- ne_countries(scale = "large", returnclass = "sf")
+class(world)
+```
+```{r}
+world_mapdt_COVID_19 <- merge(world[,c('admin', 'adm0_a3','continent','geometry')],
+                            raw_data%>% 
+               group_by(countriesAndTerritories, geoId, countryterritoryCode,
+                  continentExp, popData2019) %>% 
+                  summarise(cases = sum(cases), deaths = sum(deaths), .groups = 'drop'),  
+                              by.x = "adm0_a3", 
+                              by.y = "countryterritoryCode", all=TRUE)
+
+#Keep all rows from x AND from y #Outerjoin
+world_mapdt_COVID_19 <- world_mapdt_COVID_19[!duplicated(world_mapdt_COVID_19$adm0_a3),]
+
+
+ggplot(data = world_mapdt_COVID_19) +
+geom_sf(aes(fill = cases)) +
+  coord_sf(xlim = c(-180, 180), ylim = c(-90, 90), expand = FALSE)+
+    scale_fill_viridis_c(na.value = "red")+
+  labs(title= paste("Global Impact of COVID-19 as at", max(raw_data$dateRep) )
+       ,x="longitude", y = "latitude")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+ggplot(data = world_mapdt_COVID_19) +
+geom_sf(aes(fill = cases), color = "black") +
+    coord_sf(xlim = c(-180, 180), ylim = c(-90, 90), expand = FALSE)+
+    scale_fill_viridis_c(option = "C", na.value = "red")+
+  labs(title=paste("Global Impact of COVID-19 as at", max(raw_data$dateRep) ),
+       x="longitude", y = "latitude")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+ggplot(data = world_mapdt_COVID_19) +
+geom_sf(aes(fill = cases), color = "black") +
+    coord_sf(xlim = c(-180, 180), ylim = c(-90, 90), expand = FALSE)+
+    scale_fill_viridis_c(option = "C", na.value = "red")+
+  labs(title=paste("Global Impact of COVID-19 as at", max(raw_data$dateRep) ),
+       x="longitude", y = "latitude")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+  ggplot(data = world_mapdt_COVID_19) +
+  geom_sf(aes(fill = deaths)) +
+      coord_sf(xlim = c(-180, 180), ylim = c(-90, 90), expand = FALSE)+
+    scale_fill_viridis_c(option = "plasma", na.value = "green" )+
+  labs(title=paste("Global Impact of COVID-19 as at", max(raw_data$dateRep) ),
+       x="longitude", y = "latitude")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
